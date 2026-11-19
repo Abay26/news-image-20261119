@@ -1,4 +1,4 @@
-// news-image-20261119 v2 — "The World Today", Thursday 19 November 2026.
+// news-image-20261119 v3 — "The World Today" broadsheet, Thursday 19 November 2026.
 //
 // The entry is a single front-page image (entry.png, drawn for this day:
 // Shenzhen trilateral summit, Gulf war spreading, Riyadh tower strike,

@@ -6,10 +6,11 @@
 
 ## What this is
 
-**THE WORLD TODAY** — one front page summing up the world's news of
-**Thursday, 19 November 2026**: a navy masthead, one full-width lead
-story with a drawn globe and the three leaders' flags, six colour-coded
-story cards, and an "ALSO TODAY" footer strip.
+**THE WORLD TODAY** — one broadsheet front page summing up the world's
+news of **Thursday, 19 November 2026**: a centred serif masthead, a
+full-width lead headline, a wide drawn scene of the three leaders at one
+summit table under the US, Chinese and Russian flags, a three-column
+story grid, and a "THE DAY IN BRIEF" footer strip.
 
 1. **Trump, Xi and Putin sit down together — a first** (lead): the first-ever
    US–China–Russia trilateral summit opens in Shenzhen on the APEC
@@ -17,10 +18,10 @@ story cards, and an "ALSO TODAY" footer strip.
    statement on UN reform, no big deal announced
 2. **Iran hits US bases in Kuwait and Bahrain**: drones target Ali Al Salem
    air base; Bahrain fends off a fourth attack in six days; an ADNOC tanker
-   is struck in the Strait of Hormuz — one crew member missing, 11 hurt
+   is hit in the Strait of Hormuz — one missing, 11 hurt
 3. **Houthi missile damages Saudi wealth-fund tower**: windows blown out
    across seven to eight floors of Riyadh's 80-storey PIF Tower; the second
-   strike on the financial district in 11 days; no casualties reported
+   strike on the financial district in 11 days; no casualties
 4. **World court: Myanmar committed genocide**: the ICJ rules 9–6 — the first
    state ever found guilty of genocide — over the 2017 Rohingya crackdown,
    and orders reparations
