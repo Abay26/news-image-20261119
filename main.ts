@@ -1,48 +1,110 @@
-// News-image entry: "Sum up 19 November's world news in one image".
-// The entry's image is entry.png beside this file (a front page drawn
-// for Thursday 19 November 2026: six stories plus a footer line). The
-// program copies it, byte for byte, to /output/entry.png, so two runs
-// always write the same bytes. Node 22, standard library only, no
-// network: the grader runs it with /bot read-only and /output empty.
+// news-image-20261119 v2 — "The World Today", Thursday 19 November 2026.
+//
+// The entry is a single front-page image (entry.png, drawn for this day:
+// Shenzhen trilateral summit, Gulf war spreading, Riyadh tower strike,
+// ICJ Rohingya verdict, Gaza Yellow Line, COP31, Anthropic IPO + GTA VI).
+// This program does not draw anything: it validates the bundled PNG
+// chunk by chunk and copies it to $MAKEFUN_OUTPUT_DIR/entry.png, so two
+// runs always produce identical bytes. Node 22, standard library only,
+// no network; the grader runs it with /bot read-only and /output empty.
 //
 // Local run:  mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const source = new URL('./entry.png', import.meta.url);
+const MAX_BYTES = 1048576;
+const MAX_SIDE = 1024;
+
+// --- CRC-32 (PNG chunk checksums), table built once at startup. --------
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n += 1) {
+    let c = n;
+    for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(buf: Buffer): number {
+  let c = 0xffffffff;
+  for (const byte of buf) c = CRC_TABLE[(c ^ byte) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// --- PNG validation: walk every chunk, check type, length and CRC. -----
+function validatePng(bytes: Buffer): { width: number; height: number } {
+  const magic = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (bytes.length < 8 || !bytes.subarray(0, 8).equals(magic)) {
+    throw new Error('entry.png does not start with the PNG magic bytes');
+  }
+  if (bytes.length > MAX_BYTES) {
+    throw new Error(`entry.png is ${bytes.length} bytes, over the 1 MiB cap`);
+  }
+
+  let offset = 8;
+  let seenIhdr = false;
+  let seenIdat = false;
+  let seenIend = false;
+  let width = 0;
+  let height = 0;
+
+  while (offset + 12 <= bytes.length) {
+    const length = bytes.readUInt32BE(offset);
+    const type = bytes.toString('ascii', offset + 4, offset + 8);
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    if (dataEnd + 4 > bytes.length) {
+      throw new Error(`PNG chunk ${type} at ${offset} is truncated`);
+    }
+    const storedCrc = bytes.readUInt32BE(dataEnd);
+    const actualCrc = crc32(bytes.subarray(offset + 4, dataEnd));
+    if (storedCrc !== actualCrc) {
+      throw new Error(`PNG chunk ${type} has a bad CRC`);
+    }
+    if (!seenIhdr) {
+      if (type !== 'IHDR' || length !== 13) {
+        throw new Error('first PNG chunk must be a 13-byte IHDR');
+      }
+      width = bytes.readUInt32BE(dataStart);
+      height = bytes.readUInt32BE(dataStart + 4);
+      if (width < 1 || width > MAX_SIDE || height < 1 || height > MAX_SIDE) {
+        throw new Error(`image is ${width}x${height}, over the 1024x1024 cap`);
+      }
+      seenIhdr = true;
+    }
+    if (type === 'IDAT') seenIdat = true;
+    if (type === 'IEND') {
+      if (length !== 0 || dataEnd + 4 !== bytes.length) {
+        throw new Error('IEND must be the final, empty chunk');
+      }
+      seenIend = true;
+      break;
+    }
+    offset = dataEnd + 4;
+  }
+  if (!seenIhdr || !seenIdat || !seenIend) {
+    throw new Error('entry.png is missing IHDR, image data, or a trailing IEND chunk');
+  }
+  return { width, height };
+}
+
+// --- Copy. ---------------------------------------------------------------
+const here = dirname(fileURLToPath(import.meta.url));
+const sourcePath = join(here, 'entry.png');
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
-const target = join(outDir, 'entry.png');
+const targetPath = join(outDir, 'entry.png');
 
-// The image must exist and be a whole PNG within the gate's limits.
-const bytes = readFileSync(source);
-if (bytes.length === 0 || bytes.length > 1048576) {
-  throw new Error(`entry.png is ${bytes.length} bytes, outside 1..1048576`);
-}
-if (bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47) {
-  throw new Error('entry.png is not a PNG (bad magic bytes)');
-}
-// The IHDR chunk (bytes 16..24) carries width and height, big-endian;
-// the gate also caps the image at 1024 by 1024 pixels. Check the chunk
-// is really IHDR, and that the file ends with a whole IEND chunk, so a
-// truncated or corrupt PNG is refused instead of copied.
-if (bytes.toString('ascii', 12, 16) !== 'IHDR') {
-  throw new Error('entry.png has no IHDR chunk at offset 12');
-}
-if (bytes.length < 12 || bytes.toString('ascii', bytes.length - 8, bytes.length - 4) !== 'IEND') {
-  throw new Error('entry.png does not end with an IEND chunk');
-}
-const width = bytes.readUInt32BE(16);
-const height = bytes.readUInt32BE(20);
-if (width === 0 || width > 1024 || height === 0 || height > 1024) {
-  throw new Error(`entry.png is ${width}x${height}, outside 1..1024 per side`);
-}
+const png = readFileSync(sourcePath);
+const { width, height } = validatePng(png);
 
 mkdirSync(outDir, { recursive: true });
-copyFileSync(source, target);
+writeFileSync(targetPath, png);
 
-const written = statSync(target);
-if (written.size !== bytes.length) {
-  throw new Error(`wrote ${written.size} bytes, expected ${bytes.length}`);
+const written = readFileSync(targetPath);
+if (!written.equals(png)) {
+  throw new Error('verification read-back differs from entry.png');
 }
-console.log(`wrote ${target} (${written.size} bytes)`);
+console.log(`wrote ${targetPath} (${png.length} bytes, ${width}x${height})`);
